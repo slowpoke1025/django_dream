@@ -49,7 +49,7 @@ class UserView(ModelViewSet):
         elif self.action == "retrieve":
             permission_classes = [IsUserOrAdmin]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [AllowAny]
         return [permission() for permission in permission_classes]
 
     # def perform_create(self, serializer):
