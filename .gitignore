@@ -7,7 +7,7 @@ __pycache__/
 secret_key.txt
 
 # Ignore development and local settings
-settings.py
+# settings.py
 local_settings.py
 
 # Ignore static files collected by Django
