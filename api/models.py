@@ -34,7 +34,7 @@ class Gear(models.Model):
     level = models.CharField(choices=Level.choices, max_length=15, blank=True)
     type = models.IntegerField(choices=Type.choices, blank=True)
     color = models.CharField(choices=Color.choices, max_length=255, blank=True)
-    work_max = models.IntegerField(blank=True)
+    work_max = models.IntegerField(blank=True, null=True)
     exp = models.FloatField(default=0, blank=True)
     lucky = models.FloatField(blank=True, null=True)
     coupon = models.CharField(max_length=255, blank=True, null=True)

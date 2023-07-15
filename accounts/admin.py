@@ -7,14 +7,14 @@ from django.contrib.auth.models import Group
 
 # Register your models here.
 
-PROFILE_FIELDS = ("weight", "height", "gender", "birth")
+PROFILE_FIELDS = ("weight", "height", "gender", "birth", "email")
 PERMISSION_FIELDS = ("is_superuser", "is_active")
 
 
 class CustomUserAdmin(UserAdmin):
-    inlines = [  # 在 user admin site 展開 gear
-        GearInline,
-    ]
+    # inlines = [  # 在 user admin site 展開 gear
+    #     GearInline,
+    # ]
 
     list_display = (
         "username",
@@ -24,7 +24,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = PERMISSION_FIELDS
     filter_horizontal = []  # disable groups and user_permissions from PermissionsMixin
     fieldsets = (
-        ("Account", {"fields": ("username", "password")}),
+        ("Account", {"fields": ("username",)}),
         ("Profile", {"fields": PROFILE_FIELDS}),
         ("Permissions", {"fields": PERMISSION_FIELDS}),
     )
@@ -32,7 +32,9 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = (
         (
             "Account",
+            # {"classes": ("wide",), "fields": ("username", "password1", "password2")},
             {"classes": ("wide",), "fields": ("username", "password1", "password2")},
+            
         ),
         (
             "Profile",

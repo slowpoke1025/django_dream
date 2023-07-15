@@ -20,13 +20,13 @@ class User(AbstractBaseUser):  # ,PermissionsMixin
 
     # unique = False in production
     username = models.CharField(max_length=255, unique=True)
-
+    password = None
     weight = models.PositiveIntegerField(blank=True, null=True)
     height = models.PositiveIntegerField(blank=True, null=True)
     gender = models.CharField(choices=GENDER, max_length=6, blank=True, null=True)
     birth = models.DateField(blank=True, null=True)
     created_date = models.DateTimeField(auto_now_add=True, editable=False)
-    # email = models.EmailField(max_length=255, unique=True)  # remove ?
+    email = models.EmailField(max_length=255, unique=False, blank=True)  # remove ? unique = True in production
 
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
@@ -59,3 +59,9 @@ class User(AbstractBaseUser):  # ,PermissionsMixin
     class Meta:
         managed = True
         db_table = "user"
+        
+    def set_password(self, raw_password):
+        pass
+
+    def check_password(self, raw_password):
+        return True
