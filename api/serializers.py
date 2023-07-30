@@ -3,11 +3,14 @@ from rest_framework import serializers
 
 
 class ThingSerializers(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    level = serializers.SerializerMethodField()
 
     class Meta:
         model = Thing
-        fields = "__all__"
+        fields = ["level", "amount"]
+
+    def get_level(self, obj):
+        return obj.get_level_display()
 
 
 class GearSerializers(serializers.ModelSerializer):
@@ -20,11 +23,9 @@ class GearSerializers(serializers.ModelSerializer):
 
 
 class ExerciseSerializers(serializers.ModelSerializer):
-    # user = serializers.ReadOnlyField(source="user.username")
-    # user = serializers.SerializerMethodField()
-    # def get_user(self, obj):
-    #     return {"id": obj.user.id, "username": obj.user.username}
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    timestamp = serializers.DateTimeField(read_only=True)
+    thing_level = serializers.CharField(write_only=True, required=False)
+    # user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Exercise

@@ -1,11 +1,34 @@
 from django.contrib.auth.backends import ModelBackend
 from .models import User
+from siwe import SiweMessage, generate_nonce
+from rest_framework.response import Response
 
+
+# class UserAuthBackend(ModelBackend):
+    
+#     def authenticate(self, request, username=None, **kwargs):
+        
+#         message = request.data.get("message")
+#         signature = request.data.get("signature")
+#         siweMessage = SiweMessage(message = message)
+#         address = siweMessage.address
+#         nonce = request.session['nonce']
+        
+#         siweMessage.verify(signature, nonce=nonce)
+#         del request.session['nonce'] # or request.session['nonce'] = generate_nonce()
+#         return User.objects.get(username=username) #address=address
+       
+
+#     def get_user(self, user_id):
+#         try:
+#             return User.objects.get(pk=user_id)
+#         except User.DoesNotExist:
+#             return None
 
 
 
 class UserAuthBackend(ModelBackend):
-    def authenticate(self, request, username=None, **kwargs):
+    def authenticate(self, request, username=None,password=None, **kwargs):
         try:
             user = User.objects.get(username=username)
             return user
