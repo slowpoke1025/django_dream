@@ -25,7 +25,7 @@ urlpatterns += [
 
 # GET, PATCH, PUT user profile
 urlpatterns += [
-    path("user/<int:pk>/", views.ProfileView.as_view()),
+    path("user/<str:address>/", views.ProfileView.as_view()),
 ]
 
 urlpatterns += [

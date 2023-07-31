@@ -112,6 +112,7 @@ class ProfileView(RetrieveUpdateAPIView):
     queryset = User.objects.all()
     serializer_class = ProfileSerializers
     permission_classes = [IsUserOrAdmin]
+    lookup_field = "address"
 
 
 class LoginView(APIView):
