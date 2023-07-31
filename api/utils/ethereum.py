@@ -2,6 +2,8 @@ from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from web3.datastructures import AttributeDict
+from siwe import SiweMessage, generate_nonce
+
 import pprint
 
 import os, json
@@ -85,3 +87,7 @@ def generate_random_ethereum_address():
     account = w3.eth.account.from_key(private_key)
     address = account.address
     return address
+
+    # nonce = request.session['nonce']
+    # siweMessage.verify(signature, nonce=user.nonce)
+    # del request.session['nonce'] or generate_nonce()

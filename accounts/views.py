@@ -22,9 +22,37 @@ class fetchNonce(APIView):
             address = request.GET.get("address", None)
             user = User.objects.get(address=address)
             return Response({"nonce": user.nonce}, status=200)
+
+        except User.DoesNotExist:
+            return Response(
+                {
+                    "nonce": generate_nonce(),
+                    "message": "User does not exist",
+                    "redirect": "/signup",
+                },
+                status=302,
+            )
         except Exception as err:
             print("error:", type(err).__name__)
             return Response({"error": type(err).__name__}, status=401)
+
+
+def siweVerify(request):
+    message = request.data.get("message")
+    signature = request.data.get("signature")
+
+    siweMessage = SiweMessage(message=message)
+    address = siweMessage.address
+    user = User.objects.filter(address=address).first()
+    nonce = user.nonce if user else siweMessage.nonce
+
+    siweMessage.verify(signature, nonce=nonce)
+    print("verify")
+    if user:
+        user.nonce = generate_nonce()
+        user.save()
+
+    return user, address
 
 
 class SignInView(APIView):
@@ -33,55 +61,30 @@ class SignInView(APIView):
             if request.user.is_authenticated:
                 return Response({"error": "Login Already, Logout first"}, status=403)
 
-            # if not request.session.get("nonce"):
+            user, address = siweVerify(request)
 
-            message = request.data.get("message")
-            signature = request.data.get("signature")
-            siweMessage = SiweMessage(message=message)
-            address = siweMessage.address
-            user = User.objects.get(address=address)
+            if not user:
+                raise User.DoesNotExist
 
-            # nonce = request.session['nonce']
-
-            siweMessage.verify(signature, nonce=user.nonce)
-            # del request.session['nonce'] # or request.session['nonce'] = generate_nonce()
-
-            user = User.objects.get(address=address)  # address=address
-            user.nonce = generate_nonce()
-            user.save()
-
-            tokens = create_jwt(user)
             serializer = ProfileSerializers(user)
+            data = serializer.data
+            tokens = create_jwt(user, data)
+
             # login(request, user)
 
             return Response(
-                {"message": f"Login!", "user": serializer.data, "tokens": tokens},
+                {"message": f"Signin as {address}", "user": data, "tokens": tokens},
                 status=200,
             )
 
         except User.DoesNotExist:
             return Response(
-                {"message": "User do not exist", "redirect": "/signup"}, status=302
+                {"message": "User does not exist", "redirect": "/signup"}, status=404
             )
 
         except Exception as err:
             print("error:", type(err).__name__)
             return Response({"error": type(err).__name__}, status=401)
-
-
-class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        user = request.user
-        logout(request)
-        request.session.clear()
-        return Response(
-            {
-                "message": f"{user.username}: Logout successfully",
-            },
-            status=200,
-        )
 
 
 class UserView(ModelViewSet):
@@ -100,12 +103,24 @@ class UserView(ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        try:
+            _, address = siweVerify(request)
+        except Exception as err:
+            print("error:", type(err).__name__)
+            return Response({"error": type(err).__name__}, status=401)
+
+        serializer = self.get_serializer(data=request.data.get("user"))
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user = serializer.save(address=address)
         res = ProfileSerializers(user)
         WeekTask.objects.create(user=user)
-        return Response(res.data, status=201)
+        data = res.data
+        tokens = create_jwt(user, data)
+
+        return Response(
+            {"message": f"Signup as {address}", "user": data, "tokens": tokens},
+            status=201,
+        )
 
 
 class ProfileView(RetrieveUpdateAPIView):
@@ -113,6 +128,21 @@ class ProfileView(RetrieveUpdateAPIView):
     serializer_class = ProfileSerializers
     permission_classes = [IsUserOrAdmin]
     lookup_field = "address"
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        logout(request)
+        request.session.clear()
+        return Response(
+            {
+                "message": f"{user.username}: Logout successfully",
+            },
+            status=200,
+        )
 
 
 class LoginView(APIView):

@@ -36,6 +36,11 @@ class ThingAdmin(admin.ModelAdmin):
     list_display = ["user", "level", "amount"]
 
 
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ["user", "week_start", "count", "last_completed"]
+
+
 admin.site.register(Gear, GearAdmin)
 admin.site.register(Exercise, ExerciseAdmin)
 admin.site.register(Thing, ThingAdmin)
+admin.site.register(WeekTask, TaskAdmin)

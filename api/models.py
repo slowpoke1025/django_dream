@@ -57,7 +57,7 @@ class Gear(models.Model):
 
 class Exercise(models.Model):
     gear = models.ForeignKey(Gear, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField(auto_now_add=False, default=datetime.now)
+    timestamp = models.DateTimeField(auto_now_add=False, default=timezone.now)
     # user = models.ForeignKey(User, on_delete=models.CASCADE)
     count = models.PositiveIntegerField(default=0)  # new
     accuracy = models.FloatField(default=0.0)

@@ -71,27 +71,47 @@ class ExerciseView(ModelViewSet):
 
     def handle_task(self, exercise, user):
         if exercise.exists():
-            return {}
+            return None
         today = datetime.now().date()
-        task = WeekTask.objects.get(user=user)
+        task = user.task
         delta = today - task.week_start
 
-        if delta == timedelta(days=task.count - 1):
-            return {}
+        if delta == timedelta(days=task.count - 1):  # 已完成
+            return None
 
-        if delta == timedelta(days=task.count):
+        if delta == timedelta(days=task.count) and task.count != 0:  # 連續
             task.count += 1
             if task.count >= 7:
                 message = "恭喜完成每周任務!"
+                status = "WEEKLY_COMPLETE"
             else:
                 message = "完成本日任務"
-        else:
+                status = "DAILY_COMPLETE"
+        else:  # delta > timedelta(days=task.count)
             task.week_start = today
             task.count = 1
             message = "完成首日任務"
+            status = "DAILY_COMPLETE"
 
         task.save()  # 保存更新後的 WeekTask
-        return {"task": message}
+        return {"message": message, "status": status, "count": task.count}
+
+    def handle_thing(self, request, data):
+        thing_level = data.get("thing_level")
+        if thing_level == None:
+            return None, 1
+
+        thing = Thing.objects.filter(user=request.user, level=thing_level).first()
+        if not thing or thing.amount == 0:
+            raise PermissionDenied("You don't have any thing of specified level")
+
+        thing.amount -= 1
+        thing.save()
+
+        bonus_table = {k: v for k, v in enumerate([1.25, 1.5, 1.75])}
+        bonus = bonus_table.get(thing_level, 1)
+
+        return ThingSerializers(thing).data, bonus
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -101,25 +121,18 @@ class ExerciseView(ModelViewSet):
         gear = data.get("gear")
         count = data.get("count")
         accuracy = data.get("accuracy")
-        thing_level = data.get("thing_level")
         today = datetime.now().date()
 
-        if gear.user != self.request.user:
+        if gear.user != request.user:
             raise PermissionDenied("You are not allowed to modify this gear.")
 
-        if thing_level != None:
-            thing = Thing.objects.filter(user=gear.user, level=thing_level).first()
-            if not thing or thing.amount == 0:
-                raise PermissionDenied("You don't have any thing of specified level")
-
-            thing.amount -= 1
-            thing.save()
-
-        daily_exercise = Exercise.objects.filter(timestamp__date=today)
+        daily_exercise = Exercise.objects.filter(
+            timestamp__date=today, gear__user=gear.user
+        )
 
         total_count = (
             daily_exercise.filter(
-                gear=gear.id,
+                gear=gear,
             ).aggregate(total=Coalesce(Sum("count"), Value(0)))
         )["total"]
 
@@ -128,11 +141,10 @@ class ExerciseView(ModelViewSet):
                 "You have already reached the maximum exp for this gear today"
             )
 
+        count = min(count, gear.work_max - total_count)
+        thing, bonus = self.handle_thing(request, data)
         task = self.handle_task(daily_exercise, gear.user)
 
-        count = min(count, gear.work_max - total_count)
-        bonus_table = {k: v for k, v in enumerate([1.25, 1.5, 1.75])}
-        bonus = bonus_table.get(thing_level, 1)
         exp = count * bonus * accuracy
         gear.exp += exp
         gear.save()
@@ -140,11 +152,15 @@ class ExerciseView(ModelViewSet):
 
         return Response(
             {
-                **serializer.data,
                 "exp": exp,
-                "total_exp": gear.exp,
-                "total_count": min(total_count + count, gear.work_max),
-                **task,
+                **serializer.data,
+                "gear": {
+                    "id": gear.id,
+                    "exp": gear.exp,
+                    "daily_count": min(total_count + count, gear.work_max),
+                },
+                "task": task,
+                "thing": thing,
             },
             status=201,
         )
@@ -227,39 +243,6 @@ class ExerciseWeekView(APIView):
         days = [{"date": start + timedelta(i), "done": i < count} for i in range(7)]
 
         return Response({"dates": days, "count": count})
-
-    def post(self, request):
-        today = datetime.now().date()
-
-        # 獲取使用者當天的所有運動紀 錄
-        if Exercise.objects.filter(user=request.user, timestamp__date=today).exists():
-            return Response(
-                {"message": "You have already completed the task for today."}
-            )
-
-        task = WeekTask.objects.get(user=request.user)
-        delta = today - task.week_start
-
-        if delta == timedelta(days=task.count - 1):
-            return Response(
-                {"message": "You have already completed the task for today."}
-            )
-
-        if delta == timedelta(days=task.count):
-            task.count += 1
-            if task.count >= 7:
-                # task.count = 0
-                res = "恭喜"
-            else:
-                res = "++"
-        else:
-            task.week_start = today
-            task.count = 1
-            res = "restart"
-
-        task.save()  # 保存更新後的 WeekTask
-
-        return Response({"message": res, "count": task.count, "start": task.week_start})
 
 
 class GachaAPIView(APIView):

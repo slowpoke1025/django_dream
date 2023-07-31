@@ -31,7 +31,7 @@ class User(AbstractBaseUser):  # ,PermissionsMixin
     birth = models.DateField(blank=True, null=True)
     created_date = models.DateTimeField(auto_now_add=True, editable=False)
     email = models.EmailField(
-        max_length=255, unique=True, blank=True
+        max_length=255, unique=False, blank=True
     )  # remove ? unique = True in production
     nonce = models.CharField(max_length=36, default=generate_nonce)
 
