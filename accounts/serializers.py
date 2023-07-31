@@ -24,7 +24,7 @@ class UserSerializers(serializers.ModelSerializer):
     def validate_address(self, value):
         print(value)
         if not Web3.is_address(value):
-            raise serializers.ValidationError("Address is not in valid.")
+            raise serializers.ValidationError("Enter a valid ethereum address")
         if not Web3.is_checksum_address(value):
             value = Web3.to_checksum_address(value)
 

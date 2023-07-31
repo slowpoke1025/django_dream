@@ -13,11 +13,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 # .env
 from datetime import timedelta
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # import os
 # private_key = os.environ.get('PRIVATE_KEY')
-
 
 
 from pathlib import Path
@@ -37,7 +37,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -45,8 +44,8 @@ INSTALLED_APPS = [
     "api",
     "rest_framework",
     # "rest_framework.authtoken",
-    'rest_framework_simplejwt',
-    'corsheaders', # CORS
+    "rest_framework_simplejwt",
+    "corsheaders",  # CORS
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -63,7 +62,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware', # CORS
+    "corsheaders.middleware.CorsMiddleware",  # CORS
 ]
 
 SIMPLE_JWT = {
@@ -129,11 +128,11 @@ DATABASES = {
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Taipei' 
+TIME_ZONE = "Asia/Taipei"
 
 USE_I18N = True
 
-USE_TZ = False # Asia/Taipei-> False, UTC -> True
+USE_TZ = False  # Asia/Taipei-> False, UTC -> True
 
 
 # Static files (CSS, JavaScript, Images)
@@ -154,15 +153,14 @@ AUTHENTICATION_BACKENDS = [
 ]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-    'rest_framework_simplejwt.authentication.JWTAuthentication',
-        "rest_framework.authentication.SessionAuthentication", # using admin site
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",  # using admin site
         # "rest_framework.authentication.TokenAuthentication",
     ],
 }
 
 
-
-CORS_ORIGIN_ALLOW_ALL = True #CORS
+CORS_ORIGIN_ALLOW_ALL = True  # CORS
 
 # CORS_ALLOWED_ORIGINS = [
 #     'http://localhost:5501',
@@ -171,11 +169,16 @@ CORS_ORIGIN_ALLOW_ALL = True #CORS
 
 CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_SAMESITE = 'Strict'
+SESSION_COOKIE_SAMESITE = "Strict"
 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5501', 'http://127.0.0.1:5501', 'http://192.168.166.225:5501','http://172.22.95.119:5501']
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5501",
+    "http://127.0.0.1:5501",
+    "http://192.168.166.225:5501",
+    "http://172.22.95.119:5501",
+]
 
-CSRF_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SECURE = False
 # CSFR_COOKIE_DOMAIN = "localhost"
 
@@ -189,7 +192,3 @@ CSRF_COOKIE_SECURE = False
 
 # # Set the session age (e.g., 1 day)
 # SESSION_COOKIE_AGE = 86400  # 1 day in seconds
-
-
-
-

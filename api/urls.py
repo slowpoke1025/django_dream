@@ -2,8 +2,9 @@ from django.urls import path, include
 from . import views
 
 urlpatterns = [
-    path("gears/", views.GearView.as_view()),
-    path("things/", views.ThingView.as_view()),
+    path("bag/", views.BagView.as_view()),
+    path("bag/gears/", views.GearView.as_view()),
+    path("bag/things/", views.ThingView.as_view()),
     path("exercises/", views.ExerciseView.as_view({"get": "list", "post": "create"})),
 ]
 
@@ -18,7 +19,7 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-    path("read/", views.readView.as_view()),
+    path("read/", views.readView.as_view()),  # test only
     path("mint/", views.mintView.as_view()),
 ]
 # .list(), .retrieve(), .create(), .update(), .partial_update(), .destroy()

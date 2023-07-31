@@ -7,10 +7,11 @@ class GearInline(admin.StackedInline):  # admin.TabularInline
     model = Gear
     extra = 1
 
+
 class TaskInline(admin.StackedInline):  # admin.TabularInline
     model = WeekTask
     extra = 1
-    
+
 
 class GearAdmin(admin.ModelAdmin):
     list_display = [
@@ -28,7 +29,7 @@ class GearAdmin(admin.ModelAdmin):
 
 
 class ExerciseAdmin(admin.ModelAdmin):
-    list_display = ["user", "gear", "timestamp", "count", "accuracy"]
+    list_display = ["user", "type", "gear", "timestamp", "count", "accuracy"]
 
 
 class ThingAdmin(admin.ModelAdmin):

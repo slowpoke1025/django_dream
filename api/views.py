@@ -20,6 +20,20 @@ from .serializers import (
 )
 
 
+class BagView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        things = user.thing_set.all().order_by("level")
+        gears = user.gear_set.all().order_by("type", "level")
+        thing_serializer = ThingSerializers(things, many=True)
+        gear_serializer = GearSerializers(gears, many=True)
+        return Response(
+            {"gears": gear_serializer.data, "things": thing_serializer.data}
+        )
+
+
 class ThingView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -90,7 +104,7 @@ class ExerciseDayView(APIView):  # 使用者每日運動種類與次數 目前�
         for k, v in result_data.items():
             result[k]["count"] = v["count"]
 
-        return Response(result)
+        return Response({"empty": not len(exercises), "records": result})
 
 
 class ExerciseMonthView(APIView):
@@ -111,22 +125,26 @@ class ExerciseMonthView(APIView):
 
         print(exercises)
 
-        return Response({"days": list(exercises)})
+        return Response(list(exercises))
 
 
 class ExerciseWeekView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):  # 抓取特定user以及當前月份完成運動的紀錄
-        # date = datetime.today().date()
-        # task = request.user.task
-        task = User.objects.get(pk=request.user.pk).task
+        task = request.user.task
         start = task.week_start
         count = task.count
+        today = datetime.now().date()
+
+        if today - start > timedelta(days=count):
+            task.week_start = today
+            task.count = 0
+            task.save()
         # exercise_days = Exercise.objects.filter(timestamp__range=(start, end))
         days = [{"date": start + timedelta(i), "done": i < count} for i in range(7)]
 
-        return Response(days)
+        return Response({"dates": days, "count": count})
 
     def post(self, request):
         today = datetime.now().date()
@@ -139,19 +157,19 @@ class ExerciseWeekView(APIView):
 
         task = WeekTask.objects.get(user=request.user)
         delta = today - task.week_start
-        # 檢查今天是否已经完成任务，避免重複計算
-        # res = None
-        if delta == timedelta(days=task.count):
-            task.count += 1
-            if task.count >= 7:
-                task.count = 0
-                res = "恭喜"
-            else:
-                res = "++"
-        elif delta == timedelta(days=task.count - 1):
+
+        if delta == timedelta(days=task.count - 1):
             return Response(
                 {"message": "You have already completed the task for today."}
             )
+
+        if delta == timedelta(days=task.count):
+            task.count += 1
+            if task.count >= 7:
+                # task.count = 0
+                res = "恭喜"
+            else:
+                res = "++"
         else:
             task.week_start = today
             task.count = 1

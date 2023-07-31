@@ -3,23 +3,44 @@ from rest_framework import serializers
 
 
 class ThingSerializers(serializers.ModelSerializer):
-    level = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
     class Meta:
         model = Thing
-        fields = ["level", "amount"]
+        fields = ["level", "name", "amount"]
 
-    def get_level(self, obj):
+    def get_name(self, obj):
         return obj.get_level_display()
 
 
 class GearSerializers(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
-    exp = serializers.FloatField(read_only=True)
+    # user = serializers.PrimaryKeyRelatedField(read_only=True)
+    type = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+    color = serializers.SerializerMethodField()
 
     class Meta:
         model = Gear
-        fields = "__all__"
+        # fields = "__all__"
+        exclude = ["user"]
+
+    def get_type(self, obj):
+        return {
+            "value": obj.type,
+            "name": obj.get_type_display(),
+        }
+
+    def get_level(self, obj):
+        return {
+            "value": obj.level,
+            "name": obj.get_level_display(),
+        }
+
+    def get_color(self, obj):
+        return {
+            "value": obj.color,
+            "name": obj.get_color_display(),
+        }
 
 
 class ExerciseSerializers(serializers.ModelSerializer):
