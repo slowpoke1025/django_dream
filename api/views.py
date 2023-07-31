@@ -6,7 +6,9 @@ from accounts.models import User
 from api.utils.ethereum import mint_test, read_test
 from .models import Thing, Gear, Exercise, WeekTask
 from accounts.permissions import IsUserOrAdmin
-from django.db.models import Sum, Q
+from django.db import transaction
+from django.db.models import Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -67,19 +69,99 @@ class ExerciseView(ModelViewSet):
     serializer_class = ExerciseSerializers
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):  #
+    def handle_task(self, exercise, user):
+        if exercise.exists():
+            return {}
+        today = datetime.now().date()
+        task = WeekTask.objects.get(user=user)
+        delta = today - task.week_start
+
+        if delta == timedelta(days=task.count - 1):
+            return {}
+
+        if delta == timedelta(days=task.count):
+            task.count += 1
+            if task.count >= 7:
+                message = "恭喜完成每周任務!"
+            else:
+                message = "完成本日任務"
+        else:
+            task.week_start = today
+            task.count = 1
+            message = "完成首日任務"
+
+        task.save()  # 保存更新後的 WeekTask
+        return {"task": message}
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         gear = data.get("gear")
-        accuracy = data.get("accuracy")  # or from server
         count = data.get("count")
+        accuracy = data.get("accuracy")
+        thing_level = data.get("thing_level")
+        today = datetime.now().date()
 
         if gear.user != self.request.user:
             raise PermissionDenied("You are not allowed to modify this gear.")
 
-        gear.exp += accuracy  # calculate exp with exercise...
-        gear.save()
+        if thing_level != None:
+            thing = Thing.objects.filter(user=gear.user, level=thing_level).first()
+            if not thing or thing.amount == 0:
+                raise PermissionDenied("You don't have any thing of specified level")
 
+            thing.amount -= 1
+            thing.save()
+
+        daily_exercise = Exercise.objects.filter(timestamp__date=today)
+
+        total_count = (
+            daily_exercise.filter(
+                gear=gear.id,
+            ).aggregate(total=Coalesce(Sum("count"), Value(0)))
+        )["total"]
+
+        if total_count >= gear.work_max:
+            raise PermissionDenied(
+                "You have already reached the maximum exp for this gear today"
+            )
+
+        task = self.handle_task(daily_exercise, gear.user)
+
+        count = min(count, gear.work_max - total_count)
+        bonus_table = {k: v for k, v in enumerate([1.25, 1.5, 1.75])}
+        bonus = bonus_table.get(thing_level, 1)
+        exp = count * bonus * accuracy
+        gear.exp += exp
+        gear.save()
         serializer.save()
+
+        return Response(
+            {
+                **serializer.data,
+                "exp": exp,
+                "total_exp": gear.exp,
+                "total_count": min(total_count + count, gear.work_max),
+                **task,
+            },
+            status=201,
+        )
+
+    # def perform_create(self, serializer):  #
+    #     data = serializer.validated_data
+    #     gear = data.get("gear")
+    #     accuracy = data.get("accuracy")  # or from server
+    #     count = data.get("count")
+
+    #     if gear.user != self.request.user:
+    #         raise PermissionDenied("You are not allowed to modify this gear.")
+
+    #     gear.exp += accuracy  # calculate exp with exercise...
+    #     gear.save()
+
+    #     serializer.save()
 
 
 class ExerciseDayView(APIView):  # 使用者每日運動種類與次數 目前是直接加總

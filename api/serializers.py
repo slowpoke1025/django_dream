@@ -45,9 +45,20 @@ class GearSerializers(serializers.ModelSerializer):
 
 class ExerciseSerializers(serializers.ModelSerializer):
     timestamp = serializers.DateTimeField(read_only=True)
-    thing_level = serializers.CharField(write_only=True, required=False)
+    thing_level = serializers.IntegerField(write_only=True, required=False)
     # user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Exercise
-        fields = "__all__"
+        exclude = ["id"]
+
+    def validate_accuracy(self, value):
+        if value > 1 or value < 0:
+            raise serializers.ValidationError("accuracy must be between 0 and 1")
+        return value
+
+    def create(self, validated_data):
+        thing_level = validated_data.pop("thing_level", None)
+        exercise = Exercise.objects.create(**validated_data)
+
+        return exercise
