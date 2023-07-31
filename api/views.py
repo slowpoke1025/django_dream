@@ -79,7 +79,7 @@ class ExerciseView(ModelViewSet):
         gear.exp += accuracy  # calculate exp with exercise...
         gear.save()
 
-        serializer.save(user=self.request.user)
+        serializer.save()
 
 
 class ExerciseDayView(APIView):  # 使用者每日運動種類與次數 目前是直接加總
@@ -88,7 +88,7 @@ class ExerciseDayView(APIView):  # 使用者每日運動種類與次數 目前�
     def get(self, request, year, month, day):
         exercises = (
             Exercise.objects.filter(
-                user=request.user,
+                gear__user=request.user,
                 timestamp__year=year,
                 timestamp__month=month,
                 timestamp__day=day,
@@ -113,7 +113,7 @@ class ExerciseMonthView(APIView):
     def get(self, request, year, month):  # 抓取特定user以及當前月份完成運動的紀錄
         exercises = (
             Exercise.objects.filter(
-                user=request.user,
+                gear__user=request.user,
                 timestamp__year=year,
                 timestamp__month=month,
             ).dates(
