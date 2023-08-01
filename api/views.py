@@ -231,18 +231,19 @@ class ExerciseWeekView(APIView):
 
     def get(self, request):  # 抓取特定user以及當前月份完成運動的紀錄
         task = request.user.task
-        start = task.week_start
-        count = task.count
         today = datetime.now().date()
 
-        if today - start > timedelta(days=count):
+        if task.delta > timedelta(days=task.count) or task.delta >= timedelta(days=7):
             task.week_start = today
             task.count = 0
             task.save()
         # exercise_days = Exercise.objects.filter(timestamp__range=(start, end))
-        days = [{"date": start + timedelta(i), "done": i < count} for i in range(7)]
+        days = [
+            {"date": task.week_start + timedelta(i), "done": i < task.count}
+            for i in range(7)
+        ]
 
-        return Response({"dates": days, "count": count})
+        return Response({"dates": days, "count": task.count})
 
 
 class GachaAPIView(APIView):
