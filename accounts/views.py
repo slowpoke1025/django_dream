@@ -27,7 +27,7 @@ class fetchNonce(APIView):
             return Response(
                 {
                     "nonce": generate_nonce(),
-                    "message": "User does not exist",
+                    "error": "UserDoesNotExist",
                     "redirect": "/signup",
                 },
                 status=302,
