@@ -30,7 +30,7 @@ class BagView(APIView):
 
     def get(self, request):
         user = request.user
-        things = user.thing_set.all().order_by("level")
+        things = user.thing_set.all().exclude(amount=0).order_by("type")
         gears = user.gear_set.all().order_by("type", "level")
         thing_serializer = ThingSerializers(things, many=True)
         gear_serializer = GearSerializers(gears, many=True)
@@ -44,7 +44,7 @@ class ThingView(APIView):
 
     def get(self, request):
         user = request.user
-        things = user.thing_set.all().order_by("level")
+        things = user.thing_set.all().exclude(amount=0).order_by("type")
         serializer = ThingSerializers(things, many=True)
         return Response(serializer.data)
 
@@ -60,38 +60,37 @@ class GearView(ModelViewSet):
         else:
             return Gear.objects.all()
 
-    # def create(self, request, *args, **kwargs):
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     serializer.save(user=request.user)  # Set the user for the new object
-    #     return Response(serializer.data, status=200)
     def create(self, request, *args, **kwargs):
         address = request.user.address
         serializer = MintSerializers(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        lucky = self.generate_lucky(data.get("lucky"))
 
         try:
             res = mint_test(address)
         except Exception as err:
-            print("error:", type(err).__name__)
+            print("error:", err)
             return Response({"error": type(err).__name__}, status=401)
 
         status = res.pop("status", None)
+        token_id = res.pop("token_id")
 
-        if status:
-            lucky = self.generate_lucky({0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1})
-            token_id = res.pop("token_id", None)
-            gear = serializer.save(user=request.user, token_id=token_id, lucky=lucky)
-            return Response(
-                {"tx": res, "uri": gear.uri, "gear": {**serializer.data}}, status=200
-            )
+        if not status:
+            return Response({"error": "mint error"}, status=400)
 
-        return Response({"error": "mint error"}, status=400)
+        gear = serializer.save(user=request.user, token_id=token_id, lucky=lucky)
+        return Response(
+            {"tx": res, "uri": gear.uri, "gear": {**serializer.data}}, status=200
+        )
 
-    def generate_lucky(self, probabilities):
-        lucky_choices = list(probabilities.keys())
-        lucky_weights = list(probabilities.values())
-        lucky = random.choices(lucky_choices, weights=lucky_weights)[0]
+    def generate_lucky(self, type):
+        lucky_choices = [type, "epic"]
+        lucky_weights = [1 - Gear.PROB_EPIC[type], Gear.PROB_EPIC[type]]
+        _type = random.choices(lucky_choices, weights=lucky_weights)[0]
+        _range = Gear.LUCKY_RANGE[_type]
+        lucky = random.randint(_range[0] * 100, _range[1] * 100) / 100
+        # return math.floor(random.uniform(lower, upper) * 100) / 100  # exclusive
         return lucky
 
     # def retrieve(self, request, *args, **kwargs):
@@ -164,13 +163,13 @@ class ExerciseView(ModelViewSet):
         return {"message": message, "status": status, "count": task.count}
 
     def handle_thing(self, request, data):
-        thing_level = data.get("thing_level")
+        thing_level = data.get("thing")
         if thing_level == None:
             return None, 1
 
-        thing = Thing.objects.filter(user=request.user, level=thing_level).first()
+        thing = Thing.objects.filter(user=request.user, type=thing_level).first()
         if not thing or thing.amount == 0:
-            raise PermissionDenied("You don't have any thing of specified level")
+            raise PermissionDenied("You don't have any thing of given type")
 
         thing.amount -= 1
         thing.save()
@@ -180,7 +179,7 @@ class ExerciseView(ModelViewSet):
 
         return ThingSerializers(thing).data, bonus
 
-    @transaction.atomic
+    @transaction.atomic  # # transaction.set_rollback(True)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -320,23 +319,15 @@ class GachaAPIView(APIView):
 
     def post(self, request):
         # 設定各等級小物的機率值
-        level_probabilities = {
-            0: 0.6,
-            1: 0.3,
-            2: 0.1,
-        }
+        probabilities = dict(enumerate([0.6, 0.3, 0.1]))
 
         # 根據機率隨機獲取一個等級
-        level_choices = list(level_probabilities.keys())
-        level_probabilities_values = list(level_probabilities.values())
-        random_level = random.choices(
-            level_choices, weights=level_probabilities_values
-        )[0]
+        choices = [*probabilities.keys()]
+        values = [*probabilities.values()]
+        level = random.choices(choices, weights=values)[0]
 
         # 檢查是否已經有同一等級的thing存在
-        existing_thing = Thing.objects.filter(
-            user=request.user, level=random_level
-        ).first()
+        existing_thing = Thing.objects.filter(user=request.user, type=level).first()
 
         if existing_thing:
             # 如果已存在，將amount加一
@@ -345,15 +336,14 @@ class GachaAPIView(APIView):
             new_thing = existing_thing
         else:
             # 否則創建新的thing
-            new_thing = Thing.objects.create(user=request.user, level=random_level)
+            new_thing = Thing.objects.create(user=request.user, type=level)
             new_thing.amount = 1
             new_thing.save()
 
         # 返回結果
         response_data = {
             "message": "You got a new thing x 1",
-            "level": new_thing.level,
-            "name": new_thing.get_level_display(),
+            "level": new_thing.type,
             "amount": new_thing.amount,
         }
         return Response(response_data)
@@ -369,24 +359,24 @@ class readView(APIView):
             return Response({"error": str(err)}, status=400)
 
 
-class mintView(APIView):
-    permission_classes = [IsAuthenticated]
+# class mintView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        address = request.user.address
-        serializer = MintSerializers(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        res = mint_test(address)
+#     def post(self, request):
+#         address = request.user.address
+#         serializer = MintSerializers(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         res = mint_test(address)
 
-        if res["tx"].get("status"):
-            lucky_probabilities = {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}
-            lucky_choices = list(lucky_probabilities.keys())
-            lucky_weights = list(lucky_probabilities.values())
-            lucky = random.choices(lucky_choices, weights=lucky_weights)[0]
-            gear = serializer.save(
-                user=request.user, token_id=res["token_id"], lucky=lucky
-            )
+#         if res["tx"].get("status"):
+#             lucky_probabilities = {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}
+#             lucky_choices = list(lucky_probabilities.keys())
+#             lucky_weights = list(lucky_probabilities.values())
+#             lucky = random.choices(lucky_choices, weights=lucky_weights)[0]
+#             gear = serializer.save(
+#                 user=request.user, token_id=res["token_id"], lucky=lucky
+#             )
 
-            return Response({"tx": res["tx"], "gear": serializer.data}, status=200)
+#             return Response({"tx": res["tx"], "gear": serializer.data}, status=200)
 
-        return Response({"error": "mint error"}, status=400)
+#         return Response({"error": "mint error"}, status=400)

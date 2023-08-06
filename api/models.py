@@ -8,7 +8,7 @@
 
 from datetime import timedelta, datetime
 import json
-import os
+import os, random
 from django.db import models
 from django.utils import timezone
 from accounts.models import User
@@ -16,6 +16,13 @@ from accounts.models import User
 
 class Gear(models.Model):
     ORIENTATION = {"髮型": "healthy", "上衣": "healthy", "下著": "workout", "鞋子": "workout"}
+    PROB_EPIC = {"regular": 0.01, "advanced": 0.05, "high-tech": 0.1}
+    LUCKY_RANGE = {
+        "regular": [1, 1],  # regular
+        "advanced": [1.01, 1.2],  # advanced
+        "high-tech": [1.21, 1.4],  # high-tech
+        "epic": [1.41, 1.5],  # epic
+    }
 
     CONFIG = {
         "healthy": {
@@ -29,12 +36,6 @@ class Gear(models.Model):
             "GOAL_DAYS": 14 / 2,
         },
     }
-
-    class Lucky(models.IntegerChoices):
-        A = (0, "regular")
-        B = (1, "advanced")
-        C = (2, "high-end")
-        D = (3, "epic")
 
     class Level(models.IntegerChoices):
         A = (0, "basic")
@@ -55,7 +56,7 @@ class Gear(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     level = models.PositiveIntegerField(choices=Level.choices)
     type = models.CharField(max_length=10, choices=Type.choices)
-    lucky = models.PositiveIntegerField(choices=Lucky.choices, default=Lucky.A)
+    lucky = models.FloatField(default=1)
     exp = models.FloatField(default=0)
     coupon = models.TextField(blank=True, null=True)
     custom = models.TextField(blank=True, null=True)
@@ -144,12 +145,12 @@ class Exercise(models.Model):
 
 
 class Thing(models.Model):
-    class Level(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         BASIC = (0, "初級小物")
         INTERMEDIATE = (1, "中級小物")
         HIGH_END = (2, "高級小物")
 
-    level = models.PositiveIntegerField(choices=Level.choices)
+    type = models.PositiveIntegerField(choices=Type.choices)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # directly record amount, easy to handle
@@ -158,10 +159,10 @@ class Thing(models.Model):
     class Meta:
         managed = True
         db_table = "thing"
-        unique_together = (("user", "level"),)
+        unique_together = (("user", "type"),)
 
     def __str__(self):
-        return f"{self.user.username}_{self.get_level_display()}"
+        return f"{self.user.username}_{self.get_type_display()}"
 
 
 class WeekTask(models.Model):

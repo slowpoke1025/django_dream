@@ -3,29 +3,28 @@ from rest_framework import serializers
 
 
 class ThingSerializers(serializers.ModelSerializer):
-    name = serializers.SerializerMethodField()
+    # name = serializers.SerializerMethodField()
 
     class Meta:
         model = Thing
-        fields = ["level", "name", "amount"]
+        fields = ["type", "amount"]
 
-    def get_name(self, obj):
-        return obj.get_level_display()
+    # def get_name(self, obj):
+    #     return obj.get_level_display()
 
 
 class MintSerializers(serializers.ModelSerializer):
+    LUCKY_CHOICE = ["regular", "advanced", "high-tech"]
     exp = serializers.ReadOnlyField()
     token_id = serializers.ReadOnlyField()
     coupon = serializers.ReadOnlyField()
-    lucky = serializers.ReadOnlyField(source="get_lucky_display")
+    lucky = serializers.ChoiceField(choices=LUCKY_CHOICE)
 
     class Meta:
         model = Gear
         fields = [
             "token_id",
-            # "uri",
             "type",
-            "orientation",
             "level",
             "lucky",
             "exp",
@@ -38,30 +37,31 @@ class MintSerializers(serializers.ModelSerializer):
 
 
 class GearSerializers(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True, source="user.address")
-    # type = serializers.SerializerMethodField()
-    level = serializers.SerializerMethodField()
-
-    # color = serializers.SerializerMethodField()
-
+    # user = serializers.PrimaryKeyRelatedField(read_only=True, source="user.address")
     class Meta:
         model = Gear
-        fields = "__all__"
+        fields = [
+            "token_id",
+            "type",
+            "level",
+            "lucky",
+            "exp",
+            "goal_exp",
+            "max_exp",
+            "daily_exp",
+            "custom",
+            "coupon",
+        ]
         # exclude = ["user"]
-
-    # def get_type(self, obj):
-    #     return {
-    #         "value": obj.type,
-    #         "name": obj.get_type_display(),
-    #     }
-
-    def get_level(self, obj):
-        return obj.get_level_display()
 
 
 class ExerciseSerializers(serializers.ModelSerializer):
     timestamp = serializers.DateTimeField(read_only=True)
-    thing_level = serializers.IntegerField(write_only=True, required=False)
+    # thing_level = serializers.IntegerField(write_only=True, required=False)
+    thing = serializers.ChoiceField(
+        write_only=True, required=False, choices=[None, 0, 1, 2]
+    )
+
     # user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
@@ -74,7 +74,7 @@ class ExerciseSerializers(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        thing_level = validated_data.pop("thing_level", None)
+        thing = validated_data.pop("thing", None)
         exercise = Exercise.objects.create(**validated_data)
 
         return exercise

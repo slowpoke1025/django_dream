@@ -33,7 +33,7 @@ class ExerciseAdmin(admin.ModelAdmin):
 
 
 class ThingAdmin(admin.ModelAdmin):
-    list_display = ["user", "level", "amount"]
+    list_display = ["user", "type", "amount"]
 
 
 class TaskAdmin(admin.ModelAdmin):

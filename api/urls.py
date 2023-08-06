@@ -21,6 +21,6 @@ urlpatterns += [
 
 urlpatterns += [
     path("read/", views.readView.as_view()),  # test only
-    path("mint/", views.mintView.as_view()),
+    # path("mint/", views.mintView.as_view()),
 ]
 # .list(), .retrieve(), .create(), .update(), .partial_update(), .destroy()
