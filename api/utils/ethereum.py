@@ -38,12 +38,17 @@ def setup_web3():
     return (w3, contract)
 
 
-def read_test():
-    return contract.functions.NFTList(acc.address).call()  # block_identifier='latest'
+def read_test(address):
+    return contract.functions.NFTList(address).call()  # block_identifier='latest'
+
+
+def get_tokenId():
+    return contract.functions.getTokenId().call()  # block_identifier='latest'
 
 
 def mint_test(to):
     nonce = w3.eth.get_transaction_count(acc.address)
+    token_id = get_tokenId()
     # gp = w3.eth.generate_gas_price()
     # print( contract.functions.mint(acc.address).estimate_gas(...))
 
@@ -77,7 +82,7 @@ def mint_test(to):
         "status": receipt.status,
         "hash": hash,
         "link": f"https://sepolia.etherscan.io/tx/{hash}",
-        "receipt": _receipt,
+        "token_id": token_id,
     }
 
 

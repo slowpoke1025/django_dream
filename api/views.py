@@ -5,18 +5,21 @@ import random
 from accounts.models import User
 from api.utils.ethereum import mint_test, read_test
 from .models import Thing, Gear, Exercise, WeekTask
-from accounts.permissions import IsUserOrAdmin
+from accounts.permissions import IsOwnerOrAdmin, IsUserOrAdmin
 from django.db import transaction
-from django.db.models import Sum, Value
+from django.db.models import Sum, Value, F
 from django.db.models.functions import Coalesce
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import NotFound
+
 
 from .serializers import (
     GearSerializers,
+    MintSerializers,
     ThingSerializers,
     ExerciseSerializers,
 )
@@ -46,14 +49,78 @@ class ThingView(APIView):
         return Response(serializer.data)
 
 
-class GearView(APIView):
-    permission_classes = [IsAuthenticated]
+class GearView(ModelViewSet):
+    permission_classes = [IsOwnerOrAdmin]
+    serializer_class = MintSerializers
+    lookup_field = "token_id"
 
-    def get(self, request):
-        user = request.user
-        gears = user.gear_set.all().order_by("type", "level")
-        serializer = GearSerializers(gears, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        if self.action == "list":
+            return Gear.objects.filter(user=self.request.user)
+        else:
+            return Gear.objects.all()
+
+    # def create(self, request, *args, **kwargs):
+    #     serializer = self.get_serializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     serializer.save(user=request.user)  # Set the user for the new object
+    #     return Response(serializer.data, status=200)
+    def create(self, request, *args, **kwargs):
+        address = request.user.address
+        serializer = MintSerializers(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            res = mint_test(address)
+        except Exception as err:
+            print("error:", type(err).__name__)
+            return Response({"error": type(err).__name__}, status=401)
+
+        status = res.pop("status", None)
+
+        if status:
+            lucky = self.generate_lucky({0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1})
+            token_id = res.pop("token_id", None)
+            gear = serializer.save(user=request.user, token_id=token_id, lucky=lucky)
+            return Response(
+                {"tx": res, "uri": gear.uri, "gear": {**serializer.data}}, status=200
+            )
+
+        return Response({"error": "mint error"}, status=400)
+
+    def generate_lucky(self, probabilities):
+        lucky_choices = list(probabilities.keys())
+        lucky_weights = list(probabilities.values())
+        lucky = random.choices(lucky_choices, weights=lucky_weights)[0]
+        return lucky
+
+    # def retrieve(self, request, *args, **kwargs):
+    #     try:
+    #         instance = self.get_object()
+    #         serializer = self.get_serializer(instance)
+    #         return Response(serializer.data, status=200)
+    #     except Exception as err:
+    #         print(err)
+    #         raise NotFound("Object not found.")
+
+    # def list(self, request, *args, **kwargs):
+    #     queryset = self.get_queryset()
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data, status=200)
+
+    # def get(self, request, pk=None):
+    #     user = request.user
+    #     if pk == None:
+    #         gears = user.gear_set.all().order_by("type", "level")
+    #         serializer = GearSerializers(gears, many=True)
+    #         return Response(serializer.data)
+    #     else:
+    #         try:
+    #             gear = user.gear_set.get(pk=pk)
+    #             serializer = GearSerializers(gear)
+    #             return Response(serializer.data, status=200)
+    #         except Gear.DoesNotExist:
+    #             return Response({'message': 'Gear not found'}, status=404)
 
     # class GearView(ModelViewSet):
     #     queryset = Gear.objects.all()
@@ -191,14 +258,16 @@ class ExerciseDayView(APIView):  # 使用者每日運動種類與次數 目前�
                 timestamp__month=month,
                 timestamp__day=day,
             )
-            .values("gear__type")
+            .values("type")
             .annotate(total_count=Sum("count"))
         )
 
+        print(exercises)
         result_data = {
-            item["gear__type"]: {"count": item["total_count"]} for item in exercises
+            item["type"]: {"count": item["total_count"]} for item in exercises
         }
-        result = [{"type": type[1], "count": 0} for type in Gear.Type.choices]
+
+        result = [{"type": type[1], "count": 0} for type in Exercise.Type.choices]
         for k, v in result_data.items():
             result[k]["count"] = v["count"]
 
@@ -293,18 +362,31 @@ class GachaAPIView(APIView):
 class readView(APIView):
     def get(self, request):
         try:
-            res = read_test()
-            return Response({"data": res}, status=200)
+            res = read_test(request.user.address)
+            return Response(res, status=200)
         except Exception as err:
+            print(err)
             return Response({"error": str(err)}, status=400)
 
 
 class mintView(APIView):
-    def post(self, request):
-        try:
-            address = request.data.get("address", os.environ.get("PUBLIC_ADDRESS"))
-            receipt = mint_test(address)
-            return Response({"receipt": receipt}, status=200)
+    permission_classes = [IsAuthenticated]
 
-        except Exception as err:
-            return Response({"error": str(err)}, status=400)
+    def post(self, request):
+        address = request.user.address
+        serializer = MintSerializers(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        res = mint_test(address)
+
+        if res["tx"].get("status"):
+            lucky_probabilities = {0: 0.4, 1: 0.3, 2: 0.2, 3: 0.1}
+            lucky_choices = list(lucky_probabilities.keys())
+            lucky_weights = list(lucky_probabilities.values())
+            lucky = random.choices(lucky_choices, weights=lucky_weights)[0]
+            gear = serializer.save(
+                user=request.user, token_id=res["token_id"], lucky=lucky
+            )
+
+            return Response({"tx": res["tx"], "gear": serializer.data}, status=200)
+
+        return Response({"error": "mint error"}, status=400)

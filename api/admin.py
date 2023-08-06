@@ -15,15 +15,15 @@ class TaskInline(admin.StackedInline):  # admin.TabularInline
 
 class GearAdmin(admin.ModelAdmin):
     list_display = [
-        "id",
-        # "token_id",
+        # "id",
+        "token_id",
         "user",
         "level",
         "type",
-        "color",
+        "orientation",
+        "lucky",
         "work_max",
         "exp",
-        "lucky",
         "coupon",
     ]
 

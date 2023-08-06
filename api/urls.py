@@ -3,8 +3,9 @@ from . import views
 
 urlpatterns = [
     path("bag/", views.BagView.as_view()),
-    path("bag/gears/", views.GearView.as_view()),
-    path("bag/things/", views.ThingView.as_view()),
+    path("gears/", views.GearView.as_view({"get": "list", "post": "create"})),
+    path("gears/<int:token_id>", views.GearView.as_view({"get": "retrieve"})),
+    path("things/", views.ThingView.as_view()),
     path("exercises/", views.ExerciseView.as_view({"get": "list", "post": "create"})),
 ]
 

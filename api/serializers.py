@@ -13,34 +13,50 @@ class ThingSerializers(serializers.ModelSerializer):
         return obj.get_level_display()
 
 
-class GearSerializers(serializers.ModelSerializer):
-    # user = serializers.PrimaryKeyRelatedField(read_only=True)
-    type = serializers.SerializerMethodField()
-    level = serializers.SerializerMethodField()
-    color = serializers.SerializerMethodField()
+class MintSerializers(serializers.ModelSerializer):
+    exp = serializers.ReadOnlyField()
+    token_id = serializers.ReadOnlyField()
+    coupon = serializers.ReadOnlyField()
+    lucky = serializers.ReadOnlyField(source="get_lucky_display")
 
     class Meta:
         model = Gear
-        # fields = "__all__"
-        exclude = ["user"]
+        fields = [
+            "token_id",
+            # "uri",
+            "type",
+            "orientation",
+            "level",
+            "lucky",
+            "exp",
+            "goal_exp",
+            "max_exp",
+            "daily_exp",
+            "custom",
+            "coupon",
+        ]
 
-    def get_type(self, obj):
-        return {
-            "value": obj.type,
-            "name": obj.get_type_display(),
-        }
+
+class GearSerializers(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True, source="user.address")
+    # type = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+
+    # color = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Gear
+        fields = "__all__"
+        # exclude = ["user"]
+
+    # def get_type(self, obj):
+    #     return {
+    #         "value": obj.type,
+    #         "name": obj.get_type_display(),
+    #     }
 
     def get_level(self, obj):
-        return {
-            "value": obj.level,
-            "name": obj.get_level_display(),
-        }
-
-    def get_color(self, obj):
-        return {
-            "value": obj.color,
-            "name": obj.get_color_display(),
-        }
+        return obj.get_level_display()
 
 
 class ExerciseSerializers(serializers.ModelSerializer):

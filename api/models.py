@@ -7,68 +7,133 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 
 from datetime import timedelta, datetime
+import json
+import os
 from django.db import models
 from django.utils import timezone
 from accounts.models import User
 
 
 class Gear(models.Model):
+    ORIENTATION = {"髮型": "healthy", "上衣": "healthy", "下著": "workout", "鞋子": "workout"}
+
+    CONFIG = {
+        "healthy": {
+            "WORK_MAX": [40, 50, 60],
+            "WORK_MIN": [20, 30, 40],
+            "GOAL_DAYS": 14,
+        },
+        "workout": {
+            "WORK_MAX": [60, 70, 80],
+            "WORK_MIN": [40, 50, 60],
+            "GOAL_DAYS": 14 / 2,
+        },
+    }
+
+    class Lucky(models.IntegerChoices):
+        A = (0, "regular")
+        B = (1, "advanced")
+        C = (2, "high-end")
+        D = (3, "epic")
+
     class Level(models.IntegerChoices):
-        A = (0, "BASIC")
-        B = (1, "INTERMEDIATE")
-        C = (2, "ADVANCED")
+        A = (0, "basic")
+        B = (1, "intermediate")
+        C = (2, "advanced")
 
-    class Color(models.IntegerChoices):
-        A = (0, "STYLE_A")
-        B = (1, "STYLE_B")
-        C = (2, "STYLE_C")
+    with open(
+        os.path.join(os.path.dirname(__file__), "gear_type.json"), "r", encoding="utf-8"
+    ) as file:
+        TYPES = json.load(file)
 
-    class Type(models.IntegerChoices):  # Gear.Type.choices
-        A = (0, "上衣/二頭彎舉")
-        B = (1, "下著/伏地挺身")
-        C = (2, "鞋子/深蹲")
+    Type = models.TextChoices(
+        "Type", [(f"{k}/{v['type']}", k) for k, v in TYPES.items()]  # (display, value)
+    )
 
     # primary_key = True in production
-    # token_id = models.BigAutoField(primary_key=True)
+    token_id = models.PositiveIntegerField(blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     level = models.PositiveIntegerField(choices=Level.choices)
-    type = models.PositiveIntegerField(choices=Type.choices, blank=True)
-    color = models.PositiveIntegerField(choices=Color.choices, blank=True)
-    work_max = models.IntegerField(blank=True, null=True)
-    exp = models.FloatField(default=0, blank=True)
-    lucky = models.FloatField(blank=True, null=True)
-    coupon = models.CharField(max_length=255, blank=True, null=True)
+    type = models.CharField(max_length=10, choices=Type.choices)
+    lucky = models.PositiveIntegerField(choices=Lucky.choices, default=Lucky.A)
+    exp = models.FloatField(default=0)
+    coupon = models.TextField(blank=True, null=True)
+    custom = models.TextField(blank=True, null=True)
 
-    def __str__(self):
-        return f"{self.user.username}_{self.id}"
+    @property
+    def config(self):
+        return self.CONFIG.get(self.orientation)
+
+    @property
+    def orientation(self):
+        return self.ORIENTATION.get(self.get_type_display().split("/")[1])
+
+    @property
+    def work_max(self):
+        return self.config.get("WORK_MAX")[self.level]
+
+    @property
+    def work_min(self):
+        return self.config.get("WORK_MIN")[self.level]
+
+    @property
+    def goal_days(self):
+        return self.config.get("GOAL_DAYS")
+
+    @property
+    def goal_exp(self):
+        return self.work_max * 2 * self.goal_days
+
+    @property
+    def daily_exp(self):  # 待補
+        return 0
+
+    @property
+    def max_exp(self):
+        return self.goal_exp / self.goal_days
 
     @property
     def is_exchangable(self):
-        return not self.is_redeemed and self.exp >= 0  # 待補滿級判斷邏輯
+        return not self.is_redeemed and self.exp >= self.goal_exp  # 待補滿級判斷邏輯
 
     @property
     def is_redeemed(self):
         return self.coupon != None
+
+    @property
+    def uri(self):
+        return f"http://140.117.71.159:8000/api/gears/{self.token_id}"
+
+    def __str__(self):
+        return f"{self.user.username}_{self.token_id}"
 
     class Meta:
         managed = True
         db_table = "gear"
 
 
+# Gear.load_type()
+
+
+# [Gear.Type.choices.append((k, v["name"])) for k, v in Gear.TYPES.items()]
+# print("before", Gear.Type.choices)
+
+
 class Exercise(models.Model):
+    class Type(models.IntegerChoices):  # Gear.Type.choices
+        A = (0, "二頭彎舉")
+        B = (1, "伏地挺身")
+        C = (2, "深蹲")
+
     gear = models.ForeignKey(Gear, on_delete=models.CASCADE)
+    type = models.PositiveIntegerField(choices=Type.choices, default=Type.A)
     timestamp = models.DateTimeField(auto_now_add=False, default=timezone.now)
-    # user = models.ForeignKey(User, on_delete=models.CASCADE)
     count = models.PositiveIntegerField(default=0)  # new
     accuracy = models.FloatField(default=0.0)
 
     @property
     def user(self):
         return self.gear.user
-
-    @property
-    def type(self):
-        return self.gear.get_type_display()
 
     class Meta:
         managed = True
@@ -100,7 +165,6 @@ class Thing(models.Model):
 
 
 class WeekTask(models.Model):
-    # user = models.ForeignKey(User, on_delete=models.CASCADE)
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, primary_key=True, related_name="task"
     )

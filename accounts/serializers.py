@@ -36,7 +36,7 @@ class UserSerializers(serializers.ModelSerializer):
 
 
 class ProfileSerializers(serializers.ModelSerializer):
-    address = serializers.CharField(read_only=True)
+    address = serializers.CharField(read_only=True)  # update
 
     class Meta:
         model = User

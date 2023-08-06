@@ -11,7 +11,11 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveUpdateAPIView, ListCreateAPIView
+from rest_framework.generics import (
+    RetrieveUpdateAPIView,
+    ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView,
+)
 
 from siwe import SiweMessage, generate_nonce
 
@@ -30,7 +34,7 @@ class fetchNonce(APIView):
                     "error": "UserDoesNotExist",
                     "redirect": "/signup",
                 },
-                status=302,
+                status=200,
             )
         except Exception as err:
             print("error:", type(err).__name__)
@@ -40,12 +44,10 @@ class fetchNonce(APIView):
 def siweVerify(request):
     message = request.data.get("message")
     signature = request.data.get("signature")
-
     siweMessage = SiweMessage(message=message)
     address = siweMessage.address
     user = User.objects.filter(address=address).first()
     nonce = user.nonce if user else siweMessage.nonce
-
     siweMessage.verify(signature, nonce=nonce)
     print("verify")
     if user:
@@ -79,7 +81,12 @@ class SignInView(APIView):
 
         except User.DoesNotExist:
             return Response(
-                {"message": "User does not exist", "redirect": "/signup"}, status=404
+                {
+                    "message": "User does not exist",
+                    "error": "UserDoesNotExist",
+                    "redirect": "/signup",
+                },
+                status=404,
             )
 
         except Exception as err:
@@ -123,11 +130,28 @@ class UserView(ModelViewSet):
         )
 
 
-class ProfileView(RetrieveUpdateAPIView):
+class ProfileView(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = ProfileSerializers
     permission_classes = [IsUserOrAdmin]
     lookup_field = "address"
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "User deleted successfully"}, status=200)
+
+    # def update(self, request, *args, **kwargs):
+    #     partial = kwargs.pop('partial', False)
+    #     instance = self.get_object()
+    #     serializer = self.get_serializer(instance, data=request.data, partial=partial)
+    #     serializer.is_valid(raise_exception=True)
+    #     self.perform_update(serializer)
+    #     return Response({'message': 'Book updated successfully'}, status=200)
+
+    # def partial_update(self, request, *args, **kwargs):
+    #     kwargs['partial'] = True
+    #     return self.update(request, *args, **kwargs)
 
 
 class LogoutView(APIView):

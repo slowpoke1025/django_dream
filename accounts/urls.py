@@ -23,7 +23,7 @@ urlpatterns += [
     path("user/<int:pk>/detail/", views.UserView.as_view({"get": "retrieve"})),
 ]
 
-# GET, PATCH, PUT user profile
+# GET, PATCH, PUT, Delete user profile
 urlpatterns += [
     path("user/<str:address>/", views.ProfileView.as_view()),
 ]
