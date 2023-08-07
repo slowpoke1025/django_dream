@@ -162,7 +162,7 @@ class ExerciseView(ModelViewSet):
         task.save()  # 保存更新後的 WeekTask
         return {"message": message, "status": status, "count": task.count}
 
-    def handle_thing(self, request, data):
+    def handle_thing(self, request, data):  # type 轉成string, 待改
         thing_level = data.get("thing")
         if thing_level == None:
             return None, 1
@@ -174,8 +174,7 @@ class ExerciseView(ModelViewSet):
         thing.amount -= 1
         thing.save()
 
-        bonus_table = {k: v for k, v in enumerate([1.25, 1.5, 1.75])}
-        bonus = bonus_table.get(thing_level, 1)
+        bonus = Thing.weights.get(thing_level, 1)
 
         return ThingSerializers(thing).data, bonus
 
@@ -319,7 +318,7 @@ class GachaAPIView(APIView):
 
     def post(self, request):
         # 設定各等級小物的機率值
-        probabilities = dict(enumerate([0.6, 0.3, 0.1]))
+        probabilities = Thing.probabilities
 
         # 根據機率隨機獲取一個等級
         choices = [*probabilities.keys()]
@@ -343,7 +342,7 @@ class GachaAPIView(APIView):
         # 返回結果
         response_data = {
             "message": "You got a new thing x 1",
-            "level": new_thing.type,
+            "type": new_thing.type,
             "amount": new_thing.amount,
         }
         return Response(response_data)

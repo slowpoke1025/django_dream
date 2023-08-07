@@ -59,7 +59,9 @@ class ExerciseSerializers(serializers.ModelSerializer):
     timestamp = serializers.DateTimeField(read_only=True)
     # thing_level = serializers.IntegerField(write_only=True, required=False)
     thing = serializers.ChoiceField(
-        write_only=True, required=False, choices=[None, 0, 1, 2]
+        write_only=True,
+        required=False,
+        choices=[None, "dumbbell", "energy_drink", "protein_powder"],
     )
 
     # user = serializers.PrimaryKeyRelatedField(read_only=True)

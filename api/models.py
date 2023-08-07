@@ -145,12 +145,30 @@ class Exercise(models.Model):
 
 
 class Thing(models.Model):
-    class Type(models.IntegerChoices):
-        BASIC = (0, "初級小物")
-        INTERMEDIATE = (1, "中級小物")
-        HIGH_END = (2, "高級小物")
+    # class Type(models.IntegerChoices):
+    #     BASIC = (0, "初級小物")
+    #     INTERMEDIATE = (1, "中級小物")
+    #     HIGH_END = (2, "高級小物")
+    probabilities = {
+        "dumbbell": 0.5,
+        "energy_drink": 0.3,
+        "protein_powder": 0.2,
+    }
 
-    type = models.PositiveIntegerField(choices=Type.choices)
+    weights = {
+        "dumbbell": 1.25,
+        "energy_drink": 1.5,
+        "protein_powder": 1.75,
+    }
+
+    class Type(models.TextChoices):
+        BASIC = ("dumbbell", "初級小物/dumbbell")
+        INTERMEDIATE = ("energy_drink", "中級小物/energy_drink")
+        HIGH_END = ("protein_powder", "高級小物/protein_powder")
+
+    # type = models.PositiveIntegerField(choices=Type.choices)
+    type = models.CharField(max_length=20, choices=Type.choices, default=Type.BASIC)
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # directly record amount, easy to handle
