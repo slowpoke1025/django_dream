@@ -1,5 +1,5 @@
 from accounts.tokens import create_jwt
-from api.models import WeekTask
+from api.models import Wear, WeekTask
 from .models import User
 from .permissions import IsUserOrAdmin
 from .serializers import ProfileSerializers, UserSerializers
@@ -121,6 +121,8 @@ class UserView(ModelViewSet):
         user = serializer.save(address=address)
         res = ProfileSerializers(user)
         WeekTask.objects.create(user=user)
+        Wear.objects.create(user=user)
+
         data = res.data
         tokens = create_jwt(user, data)
 

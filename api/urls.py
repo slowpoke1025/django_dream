@@ -17,6 +17,8 @@ urlpatterns += [
 urlpatterns += [
     path("task/", views.ExerciseWeekView.as_view()),
     path("gacha/", views.GachaAPIView.as_view()),
+    path("target/", views.WearView.as_view({"put": "_update"})),
+    path("dress/", views.WearView.as_view({"put": "update"})),
 ]
 
 urlpatterns += [

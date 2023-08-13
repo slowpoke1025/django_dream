@@ -4,7 +4,7 @@ import os
 import random
 from accounts.models import User
 from api.utils.ethereum import mint_test, read_test
-from .models import Thing, Gear, Exercise, WeekTask
+from .models import Thing, Gear, Exercise, Wear, WeekTask
 from accounts.permissions import IsOwnerOrAdmin, IsUserOrAdmin
 from django.db import transaction
 from django.db.models import Sum, Value, F
@@ -22,6 +22,8 @@ from .serializers import (
     MintSerializers,
     ThingSerializers,
     ExerciseSerializers,
+    WearSerializers,
+    WearUpdateSerializers,
 )
 
 
@@ -183,13 +185,17 @@ class ExerciseView(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        gear = data.get("gear")
+        # gear = data.get("gear")
         count = data.get("count")
         accuracy = data.get("accuracy")
         today = datetime.now().date()
 
-        if gear.user != request.user:
-            raise PermissionDenied("You are not allowed to modify this gear.")
+        # if gear.user != request.user:
+        #     raise PermissionDenied("You are not allowed to modify this gear.")
+
+        gear = request.user.wear.target
+        if gear is None:
+            raise PermissionDenied("You haven't set the target gear !")
 
         daily_exercise = Exercise.objects.filter(
             timestamp__date=today, gear__user=gear.user
@@ -213,14 +219,14 @@ class ExerciseView(ModelViewSet):
         exp = count * bonus * accuracy
         gear.exp += exp
         gear.save()
-        serializer.save()
+        serializer.save(gear=gear)
 
         return Response(
             {
                 "exp": exp,
                 **serializer.data,
                 "gear": {
-                    "id": gear.id,
+                    "token_id": gear.token_id,
                     "exp": gear.exp,
                     "daily_count": min(total_count + count, gear.work_max),
                 },
@@ -346,6 +352,65 @@ class GachaAPIView(APIView):
             "amount": new_thing.amount,
         }
         return Response(response_data)
+
+
+class WearView(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = WearUpdateSerializers
+
+    def get_queryset(self):
+        return self.request.user.gear_set
+
+    def get_object(self):
+        serializer = self.get_serializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        token_id = serializer.data.get("token_id")
+        gear = self.get_queryset().filter(token_id=token_id).first()
+        if gear is None:
+            raise PermissionDenied("You are not allowed to put on this gear")
+        return gear
+
+    def update(self, request, *args, **kwargs):
+        gear = self.get_object()
+        wear = request.user.wear
+        setattr(wear, gear.pos, gear)
+        wear.save()
+        return Response(
+            {"message": f"Update successfully", "dress": wear.dress}, status=200
+        )
+
+    def _update(self, request, *args, **kwargs):
+        gear = self.get_object()
+        wear = request.user.wear
+        wear.target = gear
+        wear.save()
+        return Response(
+            {"message": f"Update target successfully", "target": wear.target.token_id},
+            status=200,
+        )
+
+    # def perform_update(self, serializer):
+    #     # Ensure the wear object belongs to the authenticated user
+    #     instance = serializer.instance
+    #     if instance.user != self.request.user:
+    #         return Response({"error": "You are not allowed to update this wear object."},
+    #                         status=403)
+
+
+#    def update(self, request, *args, **kwargs):
+#         partial = kwargs.pop("partial", False)
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_update(serializer)
+#         return Response(
+#             {"message": "updated successfully", "data": serializer.data}, status=200
+#         )
+
+#     def partial_update(self, request, *args, **kwargs):
+#         kwargs["partial"] = True
+#         return self.update(request, *args, **kwargs)
 
 
 class readView(APIView):

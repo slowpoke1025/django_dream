@@ -1,4 +1,4 @@
-from .models import Thing, Gear, Exercise
+from .models import Thing, Gear, Exercise, Wear
 from rest_framework import serializers
 
 
@@ -33,6 +33,9 @@ class MintSerializers(serializers.ModelSerializer):
             "daily_exp",
             "custom",
             "coupon",
+            # "pos",
+            "isTargeted",
+            "isDressed",
         ]
 
 
@@ -59,12 +62,11 @@ class ExerciseSerializers(serializers.ModelSerializer):
     timestamp = serializers.DateTimeField(read_only=True)
     # thing_level = serializers.IntegerField(write_only=True, required=False)
     thing = serializers.ChoiceField(
-        write_only=True,
+        # write_only=True,
         required=False,
         choices=[None, "dumbbell", "energy_drink", "protein_powder"],
     )
-
-    # user = serializers.PrimaryKeyRelatedField(read_only=True)
+    gear = serializers.PrimaryKeyRelatedField(read_only=True, source="gear.token_id")
 
     class Meta:
         model = Exercise
@@ -80,3 +82,16 @@ class ExerciseSerializers(serializers.ModelSerializer):
         exercise = Exercise.objects.create(**validated_data)
 
         return exercise
+
+
+class WearSerializers(serializers.ModelSerializer):
+    # user = serializers.PrimaryKeyRelatedField(read_only=True, source="user.address")
+    class Meta:
+        model = Wear
+        fields = ["dress", "target"]
+
+
+class WearUpdateSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Gear
+        fields = ["token_id"]

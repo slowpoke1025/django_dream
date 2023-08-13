@@ -1,121 +1,121 @@
 {
     "b1": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "男",
         "name": "..."
     },
     "b2": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "男",
         "name": "..."
     },
     "b3": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "男",
         "name": "..."
     },
     "g1": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "女",
         "name": "..."
     },
     "g2": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "女",
         "name": "..."
     },
     "g3": {
-        "type": "髮型",
+        "type": "hair",
         "gender": "女",
         "name": "..."
     },
     "c1": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "c2": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "c3": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "c4": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "c5": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "c6": {
-        "type": "上衣",
+        "type": "top",
         "gender": "通",
         "name": "..."
     },
     "pb1": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "男",
         "name": "..."
     },
     "pb2": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "男",
         "name": "..."
     },
     "pb3": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "男",
         "name": "..."
     },
     "pg1": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "女",
         "name": "..."
     },
     "pg2": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "女",
         "name": "..."
     },
     "pg3": {
-        "type": "下著",
+        "type": "bottom",
         "gender": "女",
         "name": "..."
     },
     "s1": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     },
     "s2": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     },
     "s3": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     },
     "s4": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     },
     "s5": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     },
     "s6": {
-        "type": "鞋子",
+        "type": "shoes",
         "gender": "通",
         "name": "..."
     }

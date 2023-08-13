@@ -15,13 +15,14 @@ from accounts.models import User
 
 
 class Gear(models.Model):
-    ORIENTATION = {"髮型": "healthy", "上衣": "healthy", "下著": "workout", "鞋子": "workout"}
-    PROB_EPIC = {"regular": 0.01, "advanced": 0.05, "high-tech": 0.1}
-    LUCKY_RANGE = {
-        "regular": [1, 1],  # regular
-        "advanced": [1.01, 1.2],  # advanced
-        "high-tech": [1.21, 1.4],  # high-tech
-        "epic": [1.41, 1.5],  # epic
+    with open(
+        os.path.join(os.path.dirname(__file__), "gear_type.json"), "r", encoding="utf-8"
+    ) as file:
+        TYPES_INFO = json.load(file)
+
+    ORIENTATION = {
+        k: "healthy" if v["type"] in ["hair", "top"] else "workout"
+        for k, v in TYPES_INFO.items()
     }
 
     CONFIG = {
@@ -37,23 +38,27 @@ class Gear(models.Model):
         },
     }
 
+    PROB_EPIC = {"regular": 0.01, "advanced": 0.05, "high-tech": 0.1}
+    LUCKY_RANGE = {
+        "regular": [1, 1],  # regular
+        "advanced": [1.01, 1.2],  # advanced
+        "high-tech": [1.21, 1.4],  # high-tech
+        "epic": [1.41, 1.5],  # epic
+    }
+
+    Type = models.TextChoices(
+        "Type",
+        [(f"{v['type']}/{k}", k) for k, v in TYPES_INFO.items()],  # (display, value)
+    )
+
     class Level(models.IntegerChoices):
         A = (0, "basic")
         B = (1, "intermediate")
         C = (2, "advanced")
 
-    with open(
-        os.path.join(os.path.dirname(__file__), "gear_type.json"), "r", encoding="utf-8"
-    ) as file:
-        TYPES = json.load(file)
-
-    Type = models.TextChoices(
-        "Type", [(f"{k}/{v['type']}", k) for k, v in TYPES.items()]  # (display, value)
-    )
-
     # primary_key = True in production
     token_id = models.PositiveIntegerField(blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     level = models.PositiveIntegerField(choices=Level.choices)
     type = models.CharField(max_length=10, choices=Type.choices)
     lucky = models.FloatField(default=1)
@@ -67,7 +72,7 @@ class Gear(models.Model):
 
     @property
     def orientation(self):
-        return self.ORIENTATION.get(self.get_type_display().split("/")[1])
+        return self.ORIENTATION.get(self.type)
 
     @property
     def work_max(self):
@@ -105,8 +110,20 @@ class Gear(models.Model):
     def uri(self):
         return f"http://140.117.71.159:8000/api/gears/{self.token_id}"
 
+    @property
+    def pos(self):
+        return self.TYPES_INFO[self.type].get("type")
+
+    @property
+    def isTargeted(self):
+        return self.user.wear.target == self
+
+    @property
+    def isDressed(self):
+        return getattr(self.user.wear, self.pos) == self
+
     def __str__(self):
-        return f"{self.user.username}_{self.token_id}"
+        return f"{self.user.username}_{self.token_id}_{self.pos}"
 
     class Meta:
         managed = True
@@ -121,13 +138,13 @@ class Gear(models.Model):
 
 
 class Exercise(models.Model):
-    class Type(models.IntegerChoices):  # Gear.Type.choices
-        A = (0, "二頭彎舉")
-        B = (1, "伏地挺身")
-        C = (2, "深蹲")
+    class Type(models.TextChoices):  # Gear.Type.choices
+        A = ("bicep_curl", "二頭彎舉")
+        B = ("push_up", "伏地挺身")
+        C = ("squat", "深蹲")
 
     gear = models.ForeignKey(Gear, on_delete=models.CASCADE)
-    type = models.PositiveIntegerField(choices=Type.choices, default=Type.A)
+    type = models.CharField(max_length=15, choices=Type.choices, default=Type.A)
     timestamp = models.DateTimeField(auto_now_add=False, default=timezone.now)
     count = models.PositiveIntegerField(default=0)  # new
     accuracy = models.FloatField(default=0.0)
@@ -204,3 +221,57 @@ class WeekTask(models.Model):
 
     def __str__(self):
         return f"{self.user.username}_{self.pk}"
+
+
+class Wear(models.Model):
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, primary_key=True, related_name="wear"
+    )
+    target = models.OneToOneField(
+        Gear, on_delete=models.CASCADE, related_name="target", blank=True, null=True
+    )
+    hair = models.OneToOneField(
+        Gear,
+        on_delete=models.CASCADE,
+        related_name="hair",
+        null=True,
+        blank=True,
+        default=None,
+    )
+    top = models.OneToOneField(
+        Gear,
+        on_delete=models.CASCADE,
+        related_name="top",
+        null=True,
+        blank=True,
+        default=None,
+    )
+    bottom = models.OneToOneField(
+        Gear,
+        on_delete=models.CASCADE,
+        related_name="bottom",
+        null=True,
+        blank=True,
+        default=None,
+    )
+    shoes = models.OneToOneField(
+        Gear,
+        on_delete=models.CASCADE,
+        related_name="shoes",
+        null=True,
+        blank=True,
+        default=None,
+    )
+
+    @property
+    def dress(self):
+        return [
+            obj.type if (obj := getattr(self, i)) else obj
+            for i in ["hair", "top", "bottom", "shoes"]
+        ]
+
+    class Meta:
+        managed = True
+
+    def __str__(self):
+        return f"{self.user.username}'s wearing"
