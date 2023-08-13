@@ -4,9 +4,9 @@ from api.utils.ethereum import setup_web3
 
 
 class ApiConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'api'
-    
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "api"
+
     def ready(self):
-        print("------------ ready ----------")
+        print(f"------------ ready ----------")
         setup_web3()

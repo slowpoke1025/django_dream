@@ -8,6 +8,7 @@ from .models import Thing, Gear, Exercise, Wear, WeekTask
 from accounts.permissions import IsOwnerOrAdmin, IsUserOrAdmin
 from django.db import transaction
 from django.db.models import Sum, Value, F
+from django.http import Http404
 from django.db.models.functions import Coalesce
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
@@ -358,22 +359,39 @@ class WearView(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     serializer_class = WearUpdateSerializers
+    lookup_field = "token_id"
 
     def get_queryset(self):
         return self.request.user.gear_set
 
-    def get_object(self):
-        serializer = self.get_serializer(data=self.request.data)
-        serializer.is_valid(raise_exception=True)
-        token_id = serializer.data.get("token_id")
-        gear = self.get_queryset().filter(token_id=token_id).first()
-        if gear is None:
-            raise PermissionDenied("You are not allowed to put on this gear")
-        return gear
+    # def get_object(self):
+    #     token_id = self.kwargs.get("token_id")
+    #     if self.request.method == "PUT":
+    #         serializer = self.get_serializer(data=self.request.data)
+    #         serializer.is_valid(raise_exception=True)
+    #         token_id = serializer.data.get("token_id")
+
+    #     gear = self.get_queryset().filter(token_id=token_id).first()
+    #     if gear is None:
+    #         raise PermissionDenied(
+    #             f"You are not allowed to modify this gear ({token_id})"
+    #         )
+    #     return gear
+    def handle_exception(self, exc):
+        if isinstance(exc, Http404):
+            return Response(
+                {"detail": "You are not allowed to modify this gear"}, status=403
+            )
+
+        return super().handle_exception(exc)
 
     def update(self, request, *args, **kwargs):
         gear = self.get_object()
         wear = request.user.wear
+
+        if getattr(wear, gear.pos) == gear:
+            raise PermissionDenied("This gear is already dressed")
+
         setattr(wear, gear.pos, gear)
         wear.save()
         return Response(
@@ -383,11 +401,26 @@ class WearView(ModelViewSet):
     def _update(self, request, *args, **kwargs):
         gear = self.get_object()
         wear = request.user.wear
+        if wear.target == gear:
+            raise PermissionDenied("This gear is already targeted")
         wear.target = gear
         wear.save()
         return Response(
             {"message": f"Update target successfully", "target": wear.target.token_id},
             status=200,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        gear = self.get_object()
+        wear = request.user.wear
+
+        if getattr(wear, gear.pos) != gear:
+            raise PermissionDenied("This gear isn't dressed.")
+
+        setattr(wear, gear.pos, None)
+        wear.save()
+        return Response(
+            {"message": f"Undress successfully", "dress": wear.dress}, status=200
         )
 
     # def perform_update(self, serializer):

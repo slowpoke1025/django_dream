@@ -1,8 +1,11 @@
+import asyncio
+import threading
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from web3.datastructures import AttributeDict
 from siwe import SiweMessage, generate_nonce
+from django.conf import settings
 
 import pprint
 
@@ -32,6 +35,10 @@ def setup_web3():
             abi = json.load(abi_file)
             contract = w3.eth.contract(address=contract_address, abi=abi)
         print("set up web3 successfully!")
+
+        # event_loop_thread = threading.Thread(target=listen_to_event)
+        # event_loop_thread.start()
+
         # print("-default address:", acc.address)
         # print("-contract address:", contract_address)
 

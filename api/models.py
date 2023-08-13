@@ -143,6 +143,7 @@ class Exercise(models.Model):
         B = ("push_up", "伏地挺身")
         C = ("squat", "深蹲")
 
+    # user = models.ForeignKey(User, on_delete=models.CASCADE) # transfer issue
     gear = models.ForeignKey(Gear, on_delete=models.CASCADE)
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.A)
     timestamp = models.DateTimeField(auto_now_add=False, default=timezone.now)
