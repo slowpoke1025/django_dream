@@ -23,7 +23,7 @@ def setup_web3():
     if not w3 or not contract:
         private_key = os.environ.get("PRIVATE_KEY")
         provider_url = os.environ.get("PROVIDER_URL")
-        contract_address = os.environ.get("CONTRACT_ADDRESS")
+        contract_address = "0x9fB42230C66C04e1E468b728e8177D4C97965392"
         w3 = Web3(Web3.HTTPProvider(provider_url))
         acc = w3.eth.account.from_key(private_key)
         w3.middleware_onion.add(construct_sign_and_send_raw_middleware(acc))
@@ -53,13 +53,13 @@ def get_tokenId():
     return contract.functions.getTokenId().call()  # block_identifier='latest'
 
 
-def mint_test(to):
+def mint_test(to, logs):
     nonce = w3.eth.get_transaction_count(acc.address)
     token_id = get_tokenId()
     # gp = w3.eth.generate_gas_price()
     # print( contract.functions.mint(acc.address).estimate_gas(...))
 
-    tx_hash = contract.functions.mint(to).transact(
+    tx_hash = contract.functions.mint(to, logs).transact(
         {
             "nonce": nonce,
         }

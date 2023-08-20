@@ -38,7 +38,7 @@ class UserSerializers(serializers.ModelSerializer):
 class ProfileSerializers(serializers.ModelSerializer):
     address = serializers.CharField(read_only=True)
     target = serializers.PrimaryKeyRelatedField(
-        source="wear.target.token_id", read_only=True, default=None
+        source="wear._target", read_only=True, default=None
     )
     dress = serializers.ReadOnlyField(source="wear.dress")
 

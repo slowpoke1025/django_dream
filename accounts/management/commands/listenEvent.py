@@ -67,6 +67,8 @@ class Command(BaseCommand):
                 user = await sync_to_async(User.objects.get)(address=to)
                 gear = await sync_to_async(Gear.objects.get)(token_id=id)
                 gear.user = user
+                # gear.user_id = to
+
                 await sync_to_async(gear.save)()
             except User.DoesNotExist:
                 print(f"User with address {to} not found.")

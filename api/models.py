@@ -57,8 +57,8 @@ class Gear(models.Model):
         C = (2, "advanced")
 
     # primary_key = True in production
-    token_id = models.PositiveIntegerField(blank=True)
-    user = models.ForeignKey(User, on_delete=models.DO_NOTHING)
+    token_id = models.PositiveIntegerField()
+    user = models.ForeignKey(User, on_delete=models.DO_NOTHING, to_field="address")
     level = models.PositiveIntegerField(choices=Level.choices)
     type = models.CharField(max_length=10, choices=Type.choices)
     lucky = models.FloatField(default=1)
@@ -99,8 +99,8 @@ class Gear(models.Model):
         return self.goal_exp / self.goal_days
 
     @property
-    def is_exchangable(self):
-        return not self.is_redeemed and self.exp >= self.goal_exp  # 待補滿級判斷邏輯
+    def is_exchangeable(self):
+        return True or not self.is_redeemed and self.exp >= self.goal_exp  # 上線更新
 
     @property
     def is_redeemed(self):
@@ -267,9 +267,19 @@ class Wear(models.Model):
     @property
     def dress(self):
         return [
-            obj.type if (obj := getattr(self, i)) else obj
+            {"token_id": obj.token_id, "type": obj.type}
+            if (obj := getattr(self, i))
+            else obj
             for i in ["hair", "top", "bottom", "shoes"]
         ]
+
+    @property
+    def _target(self):
+        return (
+            {"token_id": self.target.token_id, "type": self.target.type}
+            if self.target
+            else None
+        )
 
     class Meta:
         managed = True

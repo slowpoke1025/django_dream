@@ -22,6 +22,12 @@ urlpatterns += [
         "dress/<int:token_id>",
         views.WearView.as_view({"put": "update", "delete": "destroy"}),
     ),
+    path(
+        "coupon/<int:token_id>",
+        views.couponView.as_view(
+            {"get": "retrieve", "put": "update", "delete": "destroy"}
+        ),
+    ),
 ]
 
 urlpatterns += [

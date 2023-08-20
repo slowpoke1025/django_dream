@@ -39,6 +39,12 @@ class MintSerializers(serializers.ModelSerializer):
         ]
 
 
+class CouponSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Gear
+        fields = ["coupon"]
+
+
 class GearSerializers(serializers.ModelSerializer):
     # user = serializers.PrimaryKeyRelatedField(read_only=True, source="user.address")
     class Meta:

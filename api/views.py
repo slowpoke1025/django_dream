@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import os
 import random
 from accounts.models import User
-from api.utils.ethereum import mint_test, read_test
+from api.utils.ethereum import mint_test, read_test, w3
 from .models import Thing, Gear, Exercise, Wear, WeekTask
 from accounts.permissions import IsOwnerOrAdmin, IsUserOrAdmin
 from django.db import transaction
@@ -16,9 +16,11 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 
 
 from .serializers import (
+    CouponSerializers,
     GearSerializers,
     MintSerializers,
     ThingSerializers,
@@ -69,9 +71,13 @@ class GearView(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         lucky = self.generate_lucky(data.get("lucky"))
+        logs = {"type": data.get("type"), "level": data.get("level"), "lucky": lucky}
+        hex_logs = w3.to_hex(text=str(logs))
+        decode_logs = w3.to_text(hex_logs)
+        print(f"hex_logs: {hex_logs}", f"decode_logs: {decode_logs}", sep="\n")
 
         try:
-            res = mint_test(address)
+            res = mint_test(address, hex_logs)
         except Exception as err:
             print("error:", err)
             return Response({"error": type(err).__name__}, status=401)
@@ -83,6 +89,7 @@ class GearView(ModelViewSet):
             return Response({"error": "mint error"}, status=400)
 
         gear = serializer.save(user=request.user, token_id=token_id, lucky=lucky)
+
         return Response(
             {"tx": res, "uri": gear.uri, "gear": {**serializer.data}}, status=200
         )
@@ -406,7 +413,7 @@ class WearView(ModelViewSet):
         wear.target = gear
         wear.save()
         return Response(
-            {"message": f"Update target successfully", "target": wear.target.token_id},
+            {"message": f"Update target successfully", "target": wear._target},
             status=200,
         )
 
@@ -444,6 +451,47 @@ class WearView(ModelViewSet):
 #     def partial_update(self, request, *args, **kwargs):
 #         kwargs["partial"] = True
 #         return self.update(request, *args, **kwargs)
+
+
+class couponView(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CouponSerializers
+    lookup_field = "token_id"
+
+    def get_queryset(self):
+        return self.request.user.gear_set
+
+    def handle_exception(self, exc):
+        if isinstance(exc, Http404):
+            return Response(
+                {"detail": "You are not allowed to modify this gear"}, status=403
+            )
+
+        return super().handle_exception(exc)
+
+    def destroy(self, request, *args, **kwargs):
+        gear = self.get_object()
+        if gear.coupon is None:
+            raise PermissionDenied("This gear has not been exchanged")
+        gear.coupon = None
+        gear.save()
+        return Response({"message": f"Delete successfully", "coupon": None}, status=200)
+
+    def update(self, request, *args, **kwargs):
+        gear = self.get_object()
+        if gear.coupon is not None:
+            raise PermissionDenied("This gear is already exchanged")
+
+        if not gear.is_exchangeable:
+            raise PermissionDenied("This gear is not exchangeable")
+
+        serializer = self.get_serializer(gear, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"message": f"Exchange successfully", "coupon": gear.coupon}, status=200
+        )
 
 
 class readView(APIView):
