@@ -4,7 +4,7 @@ import os
 import random
 from accounts.models import User
 from api.utils.ethereum import mint_test, read_test, w3
-from .models import Thing, Gear, Exercise, Wear, WeekTask
+from .models import Coupon, Thing, Gear, Exercise, Wear, WeekTask
 from accounts.permissions import IsOwnerOrAdmin, IsUserOrAdmin
 from django.db import transaction
 from django.db.models import Sum, Value, F
@@ -477,6 +477,11 @@ class couponView(ModelViewSet):
         gear.save()
         return Response({"message": f"Delete successfully", "coupon": None}, status=200)
 
+    def list(self, request, *args, **kwargs):
+        coupons = self.get_queryset().filter(coupon__isnull=False).order_by("level")
+        serializer = CouponSerializers(coupons, many=True)
+        return Response(serializer.data)
+
     def update(self, request, *args, **kwargs):
         gear = self.get_object()
         if gear.coupon is not None:
@@ -487,10 +492,11 @@ class couponView(ModelViewSet):
 
         serializer = self.get_serializer(gear, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        serializer.save(coupon_date=datetime.now().date())
 
         return Response(
-            {"message": f"Exchange successfully", "coupon": gear.coupon}, status=200
+            {"message": f"Exchange successfully", "coupon": serializer.data}, status=200
         )
 
 

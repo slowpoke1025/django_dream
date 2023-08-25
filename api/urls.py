@@ -24,9 +24,11 @@ urlpatterns += [
     ),
     path(
         "coupon/<int:token_id>",
-        views.couponView.as_view(
-            {"get": "retrieve", "put": "update", "delete": "destroy"}
-        ),
+        views.couponView.as_view({"put": "update", "delete": "destroy"}),
+    ),
+    path(
+        "coupon/",
+        views.couponView.as_view({"get": "list"}),
     ),
 ]
 

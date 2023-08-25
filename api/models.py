@@ -65,6 +65,7 @@ class Gear(models.Model):
     exp = models.FloatField(default=0)
     coupon = models.TextField(blank=True, null=True)
     custom = models.TextField(blank=True, null=True)
+    coupon_date = models.DateField(blank=True, null=True)
 
     @property
     def config(self):
@@ -286,3 +287,10 @@ class Wear(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s wearing"
+
+
+class Coupon:
+    with open(
+        os.path.join(os.path.dirname(__file__), "coupon.json"), "r", encoding="utf-8"
+    ) as file:
+        data = json.load(file)

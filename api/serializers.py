@@ -1,4 +1,4 @@
-from .models import Thing, Gear, Exercise, Wear
+from .models import Coupon, Thing, Gear, Exercise, Wear
 from rest_framework import serializers
 
 
@@ -40,9 +40,17 @@ class MintSerializers(serializers.ModelSerializer):
 
 
 class CouponSerializers(serializers.ModelSerializer):
+    # _CHOICE = list(Coupon.data.keys())
+    # coupon = serializers.ChoiceField(choices=_CHOICE, write_only=True)
+    coupon = serializers.CharField(write_only=True)
+    type = serializers.ReadOnlyField(source="coupon")
+    date = serializers.ReadOnlyField(source="coupon_date")
+    level = serializers.ReadOnlyField()
+    token_id = serializers.ReadOnlyField()
+
     class Meta:
         model = Gear
-        fields = ["coupon"]
+        fields = ["coupon", "token_id", "type", "level", "date"]
 
 
 class GearSerializers(serializers.ModelSerializer):
